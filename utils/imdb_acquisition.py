@@ -8,7 +8,7 @@ import requests
 import re
 import logging
 logging.basicConfig(level=logging.INFO, filename='logs/imdb_scraper.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
-# from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup
 # from beautifulsoup4 import BeautifulSoup  ## apparently streamlit doesn't like bs4???
 from pandas import DataFrame, read_csv, concat
 from numpy import where

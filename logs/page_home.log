@@ -1,0 +1,6 @@
+root - INFO - 2024-03-13 - 20:41:27 Scraping https://www.imdb.com/list/ls528069836?sort=list_order,asc&st_dt=&mode=detail&page=1
+root - INFO - 2024-03-13 - 20:41:32 Scraping 1
+root - INFO - 2024-03-13 - 20:44:36 Scraping https://www.imdb.com/list/ls528069836?sort=list_order,asc&st_dt=&mode=detail&page=1
+root - INFO - 2024-03-13 - 20:44:41 Scraping 1
+root - INFO - 2024-03-13 - 20:44:41 imdb_list_ls528069836.csv saved to data/output
+root - INFO - 2024-03-13 - 20:44:41 Scraping complete: https://www.imdb.com/list/ls528069836

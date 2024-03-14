@@ -9,8 +9,7 @@ from typing import Union
 def adjust_for_inflation(dollars: Union[float, int], cpi_start_year: Union[str, int, float], cpi_target_year: Union[str, int, float]) -> float:
     '''present_value = (dollars * cpi_target_year) / cpi_start_year'''
 
-    cpi = pd.read_csv('data/input/inflation_cpi_history.csv', dtype={'Year': int, 'CPI': float})\
-            .set_index('Year')
+    cpi = pd.read_csv('data/input/inflation_cpi_history.csv', dtype={'Year': int, 'CPI': float})
 
     if isinstance(cpi_start_year, float):
         cpi_start_year = int(cpi_start_year)
@@ -41,6 +40,7 @@ def adjust_for_inflation(dollars: Union[float, int], cpi_start_year: Union[str, 
     if cpi_start_year < cpi['Year'].min():
         cpi_start_year = cpi['Year'].min()
         
+    cpi = cpi.set_index('Year')
     present_value = (dollars * cpi.loc[cpi_target_year]).div(cpi.loc[cpi_start_year]).round(2).item()
     return present_value
 
