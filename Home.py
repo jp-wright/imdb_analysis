@@ -93,7 +93,7 @@ class PageHome():
                                 st.write('Provided URL not of an IMDb list. Please try again.')
             with col2:
                 if st.button('Or use a Demo List', key='demo_list_button'):
-                    self.demo_list(big_list=True)
+                    self.demo_list(fname='wff')
                     st.session_state.film_frame = True
                 if st.session_state.df is not None:
                     self.save_list_to_csv(st.session_state.df)
@@ -102,31 +102,29 @@ class PageHome():
         '''load page based on user input'''
         self.imdb = IMDB(url)
         self.df = self.imdb.df
-        # if st.session_state.df is None: 
         st.session_state.df = self.df
 
-    def demo_list(self, big_list: bool=False):
+    def demo_list(self, fname: str='rando'):
         st.markdown(f'<font color={streamlit_blue}>Using a pre-saved list.</font>', unsafe_allow_html=True)
-        if big_list:
-            self.df = pd.read_csv('data/input/imdb_big_list.csv')
-        else:
-            self.df = pd.read_csv('data/input/imdb_demo_list.csv')
-        # if st.session_state.df is None: 
+        self.demo_name = {'rando': 'imdb_demo_list_big_rando',
+                 'wff': 'imdb_demo_list_wff',
+                 'small': 'imdb_demo_list_small',}[fname]
+        self.df = pd.read_csv(f'data/input/{self.demo_name}.csv')
         st.session_state.df = self.df
 
     def save_list_to_csv(self, frame: pd.DataFrame):
         '''download list of films to local machine'''
         @st.cache_data
         def convert_df(df):
-            # Cache the conversion to prevent computation on every rerun
             return df.to_csv().encode('utf-8')
 
         csv = convert_df(frame)
+        savename = f'imdb_list_{st.session_state.list_id}.csv' if st.session_state.list_id else f'{self.demo_name}.csv'
 
         st.download_button(
             label="Download entire list as CSV",
             data=csv,
-            file_name=f'imdb_list_{st.session_state.list_id}.csv',
+            file_name=savename,
             mime='text/csv',
         )
         
