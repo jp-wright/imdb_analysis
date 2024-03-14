@@ -1,0 +1,127 @@
+/* Change the sidebar color*/
+[data-testid=stSidebar] {
+  background-image: linear-gradient(#5f7791,#222632);/*  <-- doable
+  /* background-image: linear-gradient(#f0fbd1,#436cb4); */
+  /* background-image: linear-gradient(#000395,#FFD4DD); */   /* <---- OG */
+  /* background-image: linear-gradient(#e1e5e9,#868d91); */
+  /* background-image: linear-gradient(#5f7791,#3c4b5e);  <-- doable */
+  color: white;
+  /* a {color: white}; */
+}
+
+
+/* body {
+  margin: 0px;
+  font-family: "Source Sans Pro", sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  color: rgb(38, 39, 48);
+  background-color: rgb(253, 253, 255);
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  -webkit-font-smoothing: auto;
+} */
+
+/* .st-emotion-cache-1qvhm4y {
+  text-decoration: none;
+  font-weight: 400;
+  a:link {color: white};
+  display: flex;
+  flex-direction: row;
+  -webkit-box-align: center;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.25rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  margin: 0.125rem 1rem;
+  line-height: 2;
+  background-color: transparent;
+} */
+
+
+/* Sidebar Link color */
+span[class="st-emotion-cache-1egp75f eczjsme5"] {
+  color: white;
+}
+
+a{
+  /* display: block;  */
+  color:#2e9aff !important;
+  font-weight: bold;
+}
+
+/* Design Hyperlink */
+/* a:link , a:visited{
+  color: blue;
+  text-decoration: underline;
+} */
+
+/* a:hover, a:active {
+  color: red;
+  text-decoration: underline;
+} */
+
+p{
+  /* color: white */
+  color: #222632
+}
+
+
+.st-ck {
+  caret-color: black;
+}
+
+.st-bh, .st-c2, .st-c3, .st-c4, .st-c5, .st-c6, .st-c7, .st-c8, .st-c9, .st-ca, .st-cb, .st-b8, .st-cc, .st-cd, .st-ce, .st-cf, .st-cg, .st-ch, .st-ci, .st-cj, .st-ae, .st-af, .st-ag, .st-ck, .st-ai, .st-aj, .st-c1, .st-cl, .st-cm, .st-cn {
+  color: black;
+}
+
+/* Style the contact form */
+input[type=message], input[type=email], input[type=text], textarea {
+    width: 100%; 
+    padding: 12px; 
+    border: 1px solid #ccc; 
+    border-radius: 4px; 
+    box-sizing: border-box; 
+    margin-top: 6px;
+    margin-bottom: 16px; 
+    resize: vertical
+}
+
+/* Style the submit button with a specific background color etc */
+button[type=submit] {
+  background-color: #04AA6D;
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* When moving the mouse over the submit button, add a darker green color */
+button[type=submit]:hover {
+  background-color: #45a049;
+}
+
+/* Hide Streamlit Branding */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+
+
+.footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  background-color: #001d6c;
+  color: white;
+  text-align: center;
+}
+
+
+/* Format Images
+img[alt=pandas] {
+  width: 50px;
+} */
