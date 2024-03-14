@@ -9,7 +9,6 @@ import re
 import logging
 logging.basicConfig(level=logging.INFO, filename='logs/imdb_scraper.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 from bs4 import BeautifulSoup
-# from beautifulsoup4 import BeautifulSoup  ## apparently streamlit doesn't like bs4???
 from pandas import DataFrame, read_csv, concat
 from numpy import where
 from streamlit import write
@@ -36,20 +35,21 @@ class IMDB():
         self.df = self.scrape_list(url)
 
     def get_url_stem(self, url):
-        '''Get url stem before '?sort' to append page number to.
-            Will return full URL if no '?sort' in url, which could cause problems.
+        '''Get url stem for list.  This is the URL without the page number.  This is used to scrape the entire list.
         '''
-        pat = r"(?P<URL>.*ls\d+)/?\??"
-        match = re.search(pat, url)
-        if match:
-            return match.group("URL")
+        user_list = re.search(r"(?P<URL>.*ls\d+)/?\??", url)
+        watch_list = re.search(r"(?P<URL>.*ur\d+/watchlist)/?\??", url)
+        if user_list:
+            return user_list.group("URL")
+        elif watch_list:
+            return watch_list.group("URL")
         else:
             logging.error(f"Provided URL {url} not of an IMDb list.")
             raise ValueError(f"Provided URL {url} not of an IMDb list.")
 
     def get_list_id(self, url):
-        pat = r".*(list/(?P<list_id>ls\d+))/?\??"
-        match = re.search(pat, url)
+        """Get the list_id from the URL.  This is used to name the CSV file."""
+        match = re.search(".*((list|user)/(?P<list_id>(ls|ur)\d+))/?\??", url)
         if match:
             return match.group("list_id")
         else:
