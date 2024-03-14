@@ -2,7 +2,7 @@
 - attrs==23.2.0
 - beautifulsoup4==4.12.2
 - blinker==1.7.0
-# - bs4==4.12.2  #
+# - bs4==4.12.2  # removed because it is a duplicate of beautifulsoup4
 - bzip2==1.0.8
 - ca-certificates==2023.12.12
 - cachetools==5.3.3
