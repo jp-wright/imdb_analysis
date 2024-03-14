@@ -1,8 +1,8 @@
 - asttokens==2.0.5
 - attrs==23.2.0
-# - beautifulsoup4==4.12.2  # don't know which one Streamlit wants, bs4 or beautifulsoup4
+- beautifulsoup4==4.12.2  # don't know which one Streamlit wants, bs4 or beautifulsoup4
 - blinker==1.7.0
-- bs4==4.12.2  # don't know which one Streamlit wants, bs4 or beautifulsoup4
+# - bs4==4.12.2  # don't know which one Streamlit wants, bs4 or beautifulsoup4
 - bzip2==1.0.8
 - ca-certificates==2023.12.12
 - cachetools==5.3.3
