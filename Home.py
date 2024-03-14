@@ -65,8 +65,7 @@ class PageHome():
         def get_list_id(url: str):
             '''get the IMDb list id from the URL to use when saving file'''
 
-            pat = r".*(list/(?P<list_id>ls\d+))/?\??"
-            match = re.search(pat, url)
+            match = re.search(".*((list|user)/(?P<list_id>(ls|ur)\d+))/?\??", url)
             if match:
                 self.list_id = match.group("list_id")
                 if not st.session_state.list_id: st.session_state.list_id = self.list_id
