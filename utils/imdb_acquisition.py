@@ -7,28 +7,29 @@ import time
 import requests
 import re
 import logging
-logging.basicConfig(level=logging.INFO, filename='logs/imdb_scraper.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
+# logging.basicConfig(level=logging.INFO, filename='logs/imdb_acquisition.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 from bs4 import BeautifulSoup
 from pandas import DataFrame, read_csv, concat
 from numpy import where
-from streamlit import write
+from streamlit import write, error
 from utils.utilities import get_now, adjust_for_inflation
 
 
 class IMDB():
     def __init__(self, url: str) -> None:
-        self.ATTRS = dict(title='href="/title/.*">(.+)</',
-                        year='class="lister-item-year text-muted unbold">.*\s?\((\d+)\)',
-                        metacritic_rk='class="lister-item-index unbold text-primary">(\d+)',
-                        metacritic_score='metascore\s\w+">(\d+)',
-                        imdb_score='class="ipl-rating-star__rating">(\d\.?\d?)',
-                        certificate='class="certificate">([a-zA-Z0-9\-]+)',  
-                        runtime_mins='class="runtime">(\d+)',
-                        genre='class="genre">\n?(.+)</',
-                        director='Directors?:\n?<a href="/name/.*">(.+)</a>',
-                        gross='Gross:</span>\n?<span\s.*data-value="([0-9\,]+)"',
-                        imdb_votes='Votes:</span>\n?<span data-value="(\d+)',    
-                        description='<p class="">\n?(.+)</p>',                   
+        self.ATTRS = dict(title=r'href="/title/.*">(.+)</',
+                        year=r'class="lister-item-year text-muted unbold">.*\s?\((\d+)\)',
+                        metacritic_rk=r'class="lister-item-index unbold text-primary">(\d+)',
+                        metacritic_score=r'metascore\s\w+">(\d+)',
+                        imdb_score=r'class="ipl-rating-star__rating">(\d\.?\d?)',
+                        certificate=r'class="certificate">([a-zA-Z0-9\-]+)',  
+                        runtime_mins=r'class="runtime">(\d+)',
+                        genre=r'class="genre">\n?(.+)</',
+                        director=r'Directors?:\n?<a href="/name/.*">(.+)</a>',
+                        gross=r'Gross:</span>\n?<span\s.*data-value="([0-9\,]+)"',
+                        imdb_votes=r'Votes:</span>\n?<span data-value="(\d+)',    
+                        description=r'<p class="">\n?(.+)</p>',                   
                         )
         
         self.url = url
@@ -42,14 +43,18 @@ class IMDB():
         if user_list:
             return user_list.group("URL")
         elif watch_list:
-            return watch_list.group("URL")
+            logging.error(f"Provided URL {url} is an IMDb user 'Watchlist'. This type of list is not currently acquirable for this app.")
+            error(f"🚨 Provided URL {url} is an IMDb user 'Watchlist'. This type of list is not currently acquirable for this app.")
+            raise ValueError(f"Provided URL {url} is an IMDb user 'Watchlist'. This type of list is not currently acquirable for this app.")
+            # return watch_list.group("URL")
         else:
             logging.error(f"Provided URL {url} not of an IMDb list.")
+            error(f"🚨Provided URL {url} not of an IMDb list.")
             raise ValueError(f"Provided URL {url} not of an IMDb list.")
 
     def get_list_id(self, url):
         """Get the list_id from the URL.  This is used to name the CSV file."""
-        match = re.search(".*((list|user)/(?P<list_id>(ls|ur)\d+))/?\??", url)
+        match = re.search(r".*((list|user)/(?P<list_id>(ls|ur)\d+))/?\??", url)
         if match:
             return match.group("list_id")
         else:
@@ -58,7 +63,7 @@ class IMDB():
 
     def get_pages_in_list(self, soup):
         try:
-            tot_films = int(re.search('(\d+) titles', str(soup.find('div', attrs={'class': 'desc lister-total-num-results'}))).group(1))
+            tot_films = int(re.search(r'(\d+) titles', str(soup.find('div', attrs={'class': 'desc lister-total-num-results'}))).group(1))
         except (AttributeError, IndexError, TypeError):
             tot_films = 0
 
@@ -69,7 +74,13 @@ class IMDB():
          
     def get_soup(self, url):
         r = requests.get(url)
-        return BeautifulSoup(r.content, 'html.parser')
+        write(r.text)
+        con = BeautifulSoup(r.content, 'html.parser')
+        if 'This list is not public'.lower() in con.text.lower():
+            error("🚨 This list is not public.  Please make it public in 'EDIT' (top right of list) then 'SETTINGS' on IMDb and try again.")
+            raise Exception("List acquisition failed.  List is not public.")
+        # return BeautifulSoup(r.content, 'html.parser')
+        return con
 
     def get_title(self, soup):
         '''Get title of list for later CSV output.'''
@@ -204,28 +215,50 @@ class IMDB():
         url_stem = self.get_url_stem(url)
 
         ## always want to scrape entire list, even if URL is for a specific page
-        logging.info(f'{get_now()} Scraping {url_stem}?sort=list_order,asc&st_dt=&mode=detail&page=1')
-        soup = self.get_soup(f'{url_stem}?sort=list_order,asc&st_dt=&mode=detail&page=1')
+        logging.info(f'{get_now()} Scraping {url_stem}')
+        # write(url_stem)
+        soup = self.get_soup(url_stem)
+        # write(soup.text[10000:11000])
+        # soup = self.get_soup(f'{url_stem}?sort=list_order,asc&st_dt=&mode=detail&page=1')
         self.title = self.get_title(soup)
         # write(f'Acquiring IMDb List: [{self.title}]({url_stem})')
-        pages = self.get_pages_in_list(soup)
+        
 
-        for page, url in enumerate([f'{url_stem}?sort=list_order,asc&st_dt=&mode=detail&page={p}' for p in range(1, pages)], 1):
-            ## skip re-souping first page, already souped
-            if page > 1:
-                print("Sleeping 15 seconds.\n")
-                time.sleep(15)  ## don't want to get blocked
-                logging.info(f'{get_now()} Scraping {url}')
-                soup = self.get_soup(url)
+        def churn_non_watchlist(soup):
+            """Scrape all pages of list.  New page every 100 films. If list has more than 100 films, scrape all pages.  If less than 100, scrape just the first page.  This is because the URL for the first page of a list is the same as the URL for the entire list.  If the list has more than 100 films, the URL for the first page will have a query string with a page number.  This is the only way to scrape the entire list."""
+            pages = self.get_pages_in_list(soup)
+            for page, url in enumerate([f'{url_stem}?sort=list_order,asc&st_dt=&mode=detail&page={p}' for p in range(1, pages)], 1):
+                ## skip re-souping first page, already souped
+                if page > 1:
+                    print("Sleeping 15 seconds.\n")
+                    time.sleep(15)  ## don't want to get blocked
+                    logging.info(f'{get_now()} Scraping {url}')
+                    soup = self.get_soup(url)
 
-            # print(f'Scraping page {page}...')
-            logging.info(f'{get_now()} Scraping {page}')
+                # print(f'Scraping page {page}...')
+                logging.info(f'{get_now()} Scraping {page}')
 
+                for film in self.get_films(soup):
+                    data = self.get_all_attributes(str(film))
+                    data.update({'star': self.get_stars(str(film))})
+                    all_films.update({data['title']: data})
+            return all_films
+
+        def churn_watchlist(soup):
+            """So far as I can tell, user 'Watchlist's do not have pages, even if they eclipse 100 films. This might be a problem if a user has more than 100 films on their watchlist.  I'll have to test this. ...unsure if page loads all 100+ films without a user scrolling..."""
+            write("WATCHLIST")
             for film in self.get_films(soup):
+                write(film)
                 data = self.get_all_attributes(str(film))
                 data.update({'star': self.get_stars(str(film))})
                 all_films.update({data['title']: data})
+            return all_films  
 
+        if 'watchlist' in url_stem:
+            all_films = churn_watchlist(soup)
+        elif 'list' in url_stem:
+            all_films = churn_non_watchlist(soup)
+        
         frame = self.create_frame(all_films)
         frame = self.process_frame(frame)
 

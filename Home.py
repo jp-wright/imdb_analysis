@@ -3,7 +3,8 @@ import pandas as pd
 import re
 from typing import Any
 import logging
-logging.basicConfig(level=logging.INFO, filename='logs/page_home.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
+# logging.basicConfig(level=logging.INFO, filename='logs/page_home.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 from utils.streamlit_utilities import gradient, local_css, init_to_null
 from utils.imdb_acquisition import IMDB
 from utils.palettes import blue_bath1, streamlit_blue, fft_knight_male
@@ -65,10 +66,11 @@ class PageHome():
         def get_list_id(url: str):
             '''get the IMDb list id from the URL to use when saving file'''
 
-            match = re.search(".*((list|user)/(?P<list_id>(ls|ur)\d+))/?\??", url)
+            match = re.search(r".*((list|user)/(?P<list_id>(ls|ur)\d+))/?\??", url)
             if match:
                 self.list_id = match.group("list_id")
-                if not st.session_state.list_id: st.session_state.list_id = self.list_id
+                if not st.session_state.list_id: 
+                    st.session_state.list_id = self.list_id
             else:
                 st.error('🚨 Provided URL {url} not of an IMDb list.')
                 logging.error(f"Provided URL {url} not of an IMDb list.")
@@ -79,10 +81,11 @@ class PageHome():
             col1, col2 = st.columns([.75, .25])
             with col1:
                 with st.form(key="url_form", clear_on_submit=False):
-                        self.url = st.text_input("Paste the URL of the IMDb list you want to scrape (any page of the list is fine):", key='list_url_input', value='https://www.imdb.com/list/ls528069836/').strip()
+                        self.url = st.text_input("Paste the URL of the IMDb list you want to scrape (any page of the list is fine):", key='list_url_input', value='https://www.imdb.com/user/ur178218918/watchlist?ref_=nv_usr_wl_all_0').strip()
+                        # self.url = st.text_input("Paste the URL of the IMDb list you want to scrape (any page of the list is fine):", key='list_url_input', value='https://www.imdb.com/list/ls528069836/').strip()
                         submitted = st.form_submit_button("Submit")
                         if submitted:
-                            if 'www.imdb.com/list/' in self.url:
+                            if 'www.imdb.com/list/' in self.url or 'www.imdb.com/user/' in self.url:
                                 get_list_id(self.url)
                                 with st.spinner('Scraping...'):
                                     self.scrape_list(self.url)
