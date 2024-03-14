@@ -1,0 +1,76 @@
+root - INFO - 2024-03-12 - 18:24:35 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=1
+root - INFO - 2024-03-12 - 18:24:39 Scraping 1
+root - INFO - 2024-03-12 - 18:24:55 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=2
+root - INFO - 2024-03-12 - 18:24:59 Scraping 2
+root - INFO - 2024-03-12 - 18:25:15 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=3
+root - INFO - 2024-03-12 - 18:25:19 Scraping 3
+root - INFO - 2024-03-12 - 18:25:35 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=4
+root - INFO - 2024-03-12 - 18:25:39 Scraping 4
+root - INFO - 2024-03-12 - 18:25:55 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=5
+root - INFO - 2024-03-12 - 18:25:59 Scraping 5
+root - INFO - 2024-03-12 - 18:26:15 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=6
+root - INFO - 2024-03-12 - 18:26:19 Scraping 6
+root - INFO - 2024-03-12 - 18:26:35 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=7
+root - INFO - 2024-03-12 - 18:26:39 Scraping 7
+root - INFO - 2024-03-12 - 18:26:41 imdb_list_ls040479474.csv saved to data/output
+root - INFO - 2024-03-12 - 18:26:41 Scraping complete: https://www.imdb.com/list/ls040479474/
+root - INFO - 2024-03-12 - 18:26:41 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=1
+root - INFO - 2024-03-12 - 18:26:45 Scraping 1
+root - INFO - 2024-03-12 - 18:27:01 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=2
+root - INFO - 2024-03-12 - 18:27:07 Scraping 2
+root - INFO - 2024-03-12 - 18:27:23 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=3
+root - INFO - 2024-03-12 - 18:27:27 Scraping 3
+root - INFO - 2024-03-12 - 18:27:43 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=4
+root - INFO - 2024-03-12 - 18:27:46 Scraping 4
+root - INFO - 2024-03-12 - 18:28:02 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=5
+root - INFO - 2024-03-12 - 18:28:07 Scraping 5
+root - INFO - 2024-03-12 - 18:28:23 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=6
+root - INFO - 2024-03-12 - 18:28:27 Scraping 6
+root - INFO - 2024-03-12 - 18:28:43 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=7
+root - INFO - 2024-03-12 - 18:28:47 Scraping 7
+root - INFO - 2024-03-12 - 18:28:49 imdb_list_ls040479474.csv saved to data/output
+root - INFO - 2024-03-12 - 18:28:49 Scraping complete: https://www.imdb.com/list/ls040479474/
+root - INFO - 2024-03-12 - 18:28:49 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=1
+root - INFO - 2024-03-12 - 18:28:55 Scraping 1
+root - INFO - 2024-03-12 - 18:29:11 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=2
+root - INFO - 2024-03-12 - 18:29:15 Scraping 2
+root - INFO - 2024-03-12 - 18:29:31 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=3
+root - INFO - 2024-03-12 - 18:29:35 Scraping 3
+root - INFO - 2024-03-12 - 18:29:51 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=4
+root - INFO - 2024-03-12 - 18:29:56 Scraping 4
+root - INFO - 2024-03-12 - 18:30:12 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=5
+root - INFO - 2024-03-12 - 18:30:17 Scraping 5
+root - INFO - 2024-03-12 - 18:30:33 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=6
+root - INFO - 2024-03-12 - 18:30:37 Scraping 6
+root - INFO - 2024-03-12 - 18:30:53 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=7
+root - INFO - 2024-03-12 - 18:30:57 Scraping 7
+root - INFO - 2024-03-12 - 18:30:59 imdb_list_ls040479474.csv saved to data/output
+root - INFO - 2024-03-12 - 18:30:59 Scraping complete: https://www.imdb.com/list/ls040479474/
+root - INFO - 2024-03-12 - 18:30:59 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=1
+root - INFO - 2024-03-12 - 18:31:03 Scraping 1
+root - INFO - 2024-03-12 - 18:31:19 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=2
+root - INFO - 2024-03-12 - 18:31:23 Scraping 2
+root - INFO - 2024-03-12 - 18:31:39 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=3
+root - INFO - 2024-03-12 - 18:31:43 Scraping 3
+root - INFO - 2024-03-12 - 18:31:59 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=4
+root - INFO - 2024-03-12 - 18:32:03 Scraping 4
+root - INFO - 2024-03-12 - 18:32:19 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=5
+root - INFO - 2024-03-12 - 18:32:23 Scraping 5
+root - INFO - 2024-03-12 - 18:32:39 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=6
+root - INFO - 2024-03-12 - 18:32:44 Scraping 6
+root - INFO - 2024-03-12 - 18:32:59 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=7
+root - INFO - 2024-03-12 - 18:33:04 Scraping 7
+root - INFO - 2024-03-12 - 18:33:06 imdb_list_ls040479474.csv saved to data/output
+root - INFO - 2024-03-12 - 18:33:06 Scraping complete: https://www.imdb.com/list/ls040479474/
+root - INFO - 2024-03-12 - 18:33:06 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=1
+root - INFO - 2024-03-12 - 18:33:10 Scraping 1
+root - INFO - 2024-03-12 - 18:33:26 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=2
+root - INFO - 2024-03-12 - 18:33:30 Scraping 2
+root - INFO - 2024-03-12 - 18:33:46 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=3
+root - INFO - 2024-03-12 - 18:33:50 Scraping 3
+root - INFO - 2024-03-12 - 18:34:06 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=4
+root - INFO - 2024-03-12 - 18:34:10 Scraping 4
+root - INFO - 2024-03-12 - 18:34:26 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=5
+root - INFO - 2024-03-12 - 18:34:33 Scraping 5
+root - INFO - 2024-03-12 - 18:34:49 Scraping https://www.imdb.com/list/ls040479474/?sort=list_order,asc&st_dt=&mode=detail&page=6
+root - INFO - 2024-03-12 - 18:34:53 Scraping 6
