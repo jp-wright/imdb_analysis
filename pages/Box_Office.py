@@ -141,12 +141,12 @@ class PageBoxOffice():
         
         _, col2, _, col4 = st.columns([.15, .3, .1, .45])
         with col2:
-            n = st.slider('Select Number of Films', 10, 100, 10, 10, help='Shows the N top films and N bottom films average gross and scores.', key='top_bottom_slider')
+            n = int(st.slider('Select Number of Films', 10, 100, 10, 10, help='Shows the N top films and N bottom films average gross and scores.', key='top_bottom_slider'))
         with col4:
-            gross = st.radio('Select Box Office Revenue', ['gross', 'gross_adj_2023'], key='y_top_bottom_radio', format_func=lambda label: 'raw gross' if label == 'gross' else 'inflation adj.', horizontal=True)
+            gross = st.radio('Select Box Office Revenue', ['gross', 'gross_adj_2023'], index=0, key='y_top_bottom_radio', format_func=lambda label: 'raw gross' if label == 'gross' else 'inflation adj.', horizontal=True)
 
         @st.cache_data
-        def transform_frame(df):
+        def transform_frame(df: pd.DataFrame, n: int, gross: str):
             df = df[df['metacritic_score']>0].sort_values(gross, ascending=False) # Remove films with no metacritic score
             top_films = df.head(n)
             bottom_films = df.tail(n)
@@ -173,16 +173,13 @@ class PageBoxOffice():
             avg_scores_df = avg_scores_df.rename(index={avg_scores_df.shape[0]-1: 'Difference'})
             return avg_scores_df
         
-        avg_scores_df = transform_frame(df).style.format({
+        avg_scores_df = transform_frame(df, n, gross).style.format({
                     'Avg. Gross': "${:,.0f}",
                     'Avg. Metacritic Score': "{:.1f}",
                     'Avg. IMDb Score': "{:.1f}",
                     'Avg. IMDb Votes': "{:,.0f}"
                 })
         
-
-
-
         _, col2 = st.columns([.15, .85])
         with col2:
             st.dataframe(avg_scores_df, use_container_width=False)
@@ -192,51 +189,59 @@ class PageBoxOffice():
 
         st.markdown("<BR>", unsafe_allow_html=True)
         st.markdown("""Depending on your dataset, there may be some interesting insights to be had from the top- and bottom-grossing films.  For large enough lists of movies that have a wide spread between the top and bottom N grossing films, it's possible to see that the *very* bottom-grossing movies (bottom 10 or 30) are significantly lower rated than the equivalent top-grossing films.  But once there is a larger sample (~70+), it's possible to see that the bottom-grossing films are not significantly lower rated than the top-grossing films.  This is because the bottom-grossing films are likely to be more obscure and less well-known, and therefore less likely to be rated.  As such, the number of ratings for each film, and not just the average rating, can be informative.""")
-        st.markdown("<BR>", unsafe_allow_html=True)
+        st.markdown("<BR><BR>", unsafe_allow_html=True)
 
     def plot_gross_by_rating_plotly(self, df: pd.DataFrame=pd.DataFrame()):
         # self.element_header(f"Gross by Rating Score")
 
-        ## Originally colored this plot by decade, but it was too busy.  Now it's colored by decile of the rating score.
-        ## Decade might not be bad at some point?
-
-        x, y = plot_xy_radio_buttons(x_label='Select Rating System', x_buttons=('metacritic_score', 'imdb_score', 'combo_score'), xindex=1, y_label='Select Box Office Revenue', y_buttons=['gross', 'gross_adj_2023'], xkey='x_gross_by_rating_radio', ykey='y_gross_by_rating_radio', x_format=lambda label: label.replace('_score', ''), y_format=lambda label: 'raw gross' if label == 'gross' else 'inflation adj.', col_spacing=[.5, .25, .25], horizontal=True)
+        c1, c2, _, c4 = st.columns([.35, .25, .15, .25])
+        with c1:
+            x = st.radio('Select Rating System', ('metacritic_score', 'imdb_score', 'combo_score'), index=1,key='x_gross_by_rating_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
+        with c2:
+            chosen_genre = st.selectbox('Select Genre', ['All'] + list(df['genre1'].unique()))
+            st.markdown(f"<div align=center>{df[df['genre1']==chosen_genre].shape[0]} {chosen_genre} films</div>" if chosen_genre != 'All' else '', unsafe_allow_html=True)
+        with c4:
+            y = st.radio('Select Box Office Revenue', ['gross', 'gross_adj_2023'], key='y_gross_by_rating_radio', format_func=lambda label: 'raw gross' if label == 'gross' else 'inflation adj.', horizontal=True)
 
         @st.cache_data
         def transform_frame(df: pd.DataFrame, x: str):
-            ### df['score_decile'] = pd.qcut(df[x], 10, labels=False) 
-            ### return df.assign(tens=df[x].div(10).astype(int).mul(10)).sort_values(x, ascending=False)
-            ### return df.assign(**{x: df[x]>0})\
-                        ### .assign(score_decile=lambda f: pd.qcut(f[x], 10, labels=False, duplicates='drop'))\
-                        ### .sort_values(x, ascending=False)
-            ### return df.assign(score_decile=pd.qcut(df[x], 10, labels=False)).sort_values('year', ascending=False)
-            # return df[df[x]>0].assign(score_decile=pd.qcut(df[x], 10, labels=False, duplicates='drop')).sort_values(x, ascending=False)
             return df[df[x]>0].assign(score_decile=pd.cut(df[x], 10, labels=False, duplicates='drop')).sort_values(x, ascending=False)
 
         df_plot = transform_frame(df, x)
+        genre_mask = (df_plot['genre1'] == chosen_genre) if chosen_genre != 'All' else (df_plot['genre1'] == df_plot['genre1'])
         colors = 5 * px.colors.qualitative.Pastel
 
+        def plot_unchosen_genre(fig: go.Figure, df_plot: pd.DataFrame):
+            for decile in df_plot['score_decile'].unique():
+                data_grey = df_plot[(df_plot['score_decile'] == decile) & ~genre_mask]
+                
+                fig.add_trace(go.Scatter(
+                    x=data_grey[x],
+                    y=data_grey[y],
+                    mode='markers',
+                    name=f"{decile}0th pct.",
+                    marker=dict(color='grey', size=9, opacity=.4, line=dict(color='black', width=1)),
+                    hoverinfo='skip',
+                    showlegend=False,
+                ))
+
+        def plot_chosen_genre(fig: go.Figure, df_plot: pd.DataFrame):
+            for idx, decile in enumerate(df_plot['score_decile'].unique()):
+                data_clr = df_plot[(df_plot['score_decile'] == decile) & genre_mask]
+
+                fig.add_trace(go.Scatter(
+                    x=data_clr[x],
+                    y=data_clr[y],
+                    mode='markers',
+                    name=f"{decile}0th pct.",
+                    marker=dict(color=colors[idx], size=12 if chosen_genre != 'All' else 11, opacity=1 if chosen_genre != 'All' else .8, line=dict(color='black', width=1)),
+                    hovertemplate='<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Gross</b>: ' + data_clr[y].div(1000000).map("${:,.1f} M".format) + '<br><b>Rating</b>: ' + data_clr[x].map('{:.1f}'.format).astype(str) + '<extra></extra>',
+                    showlegend=True,
+                ))
+
         fig = go.Figure()
-        # for idx, tens in enumerate(df_plot['tens'].unique()):
-        #     data = df_plot[df_plot['tens'] == tens]
-        for idx, decile in enumerate(df_plot['score_decile'].unique()):
-            data = df_plot[df_plot['score_decile'] == decile]
-        # for idx, decade in enumerate(df_plot['decade'].unique()):
-            # data = df_plot[df_plot['decade'] == decade]
-            
-            fig.add_trace(go.Scatter(
-                x=data[x],
-                y=data[y],
-                mode='markers',
-                # name=str(tens),
-                name=f"{decile}0th pct.",
-                # name=str(decade),
-                # marker=dict(color=data['score_decile'], size=10, opacity=.8, line=dict(color='black', width=1)),
-                # marker=dict(color=decade, size=10, opacity=.8, line=dict(color='black', width=1)),
-                marker=dict(color=colors[idx], size=11, opacity=.9, line=dict(color='black', width=1)),
-                hovertemplate='<b>Title</b>: ' + data['title'] + ' (' + data['year'].astype(str) +') ' + '<br><b>Gross</b>: ' + data[y].div(1000000).map("${:,.1f} M".format) + '<br><b>Rating</b>: ' + data[x].map('{:.1f}'.format).astype(str) + '<extra></extra>',
-                showlegend=True,
-            ))
+        plot_unchosen_genre(fig, df_plot) ## add grey first so that the colored points are on top
+        plot_chosen_genre(fig, df_plot)
 
         # fig.update_xaxes(tick0=0, dtick=10)
         fig.update_layout(
@@ -251,47 +256,64 @@ class PageBoxOffice():
 
         st.markdown("""Also, note that if a film has a Metacritic score of 0, it means that it has not been rated on Metacritic.  This is not the same as a film having a Metacritic score of 0.  The same goes for IMDb scores. As such, those films have been removed from the plot to avoid skewing the visualization.""")
 
-    def plot_gross_over_time_plotly(self, df: pd.DataFrame=pd.DataFrame(), x: str='year', y: str='gross'):
+    def plot_gross_over_time_plotly(self, df: pd.DataFrame=pd.DataFrame()):
         """Plot the gross over Time."""
 
         self.element_header(f"Film Gross over Time")
         
-        x, y = plot_xy_radio_buttons('Select Timeframe', 'Select Box Office Revenue', ['year', 'decade'], ['gross', 'gross_adj_2023'], xkey='x_gross_by_year_radio', ykey='y_gross_by_year_radio', y_format=lambda label: 'raw gross' if label == 'gross' else 'inflation adj.', horizontal=True)
+        c1, c2, _, c4 = st.columns([.35, .25, .15, .25])
+        with c1:
+            x = st.radio('Select Timeframe', ['year', 'decade'], index=1, key='x_gross_by_year_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
+        with c2:
+            chosen_genre = st.selectbox('Select Genre', ['All'] + list(df['genre1'].unique()), key='genre_over_time_radio')
+            st.markdown(f"<div align=center>{df[df['genre1']==chosen_genre].shape[0]} {chosen_genre} films</div>" if chosen_genre != 'All' else '', unsafe_allow_html=True)
+        with c4:
+            y = st.radio('Select Box Office Revenue', ['gross', 'gross_adj_2023'], key='y_gross_by_year_radio', format_func=lambda label: 'raw gross' if label == 'gross' else 'inflation adj.', horizontal=True)
+
 
         @st.cache_data  # Cache the function so it doesn't run every time the user changes the radio buttons
-        def sort_by_year(df):
-            return df.sort_values('year', ascending=True)
-        df_plot = sort_by_year(df)
-
-        # df = df.sort_values('year', ascending=True)
-        # decades = {df_plot['decade'].unique()[k]: k for k in range(len(df_plot['decade'].unique()))}
+        def transform_frame(df):
+            return df[df['decade']>0].sort_values('decade', ascending=False)
+        df_plot = transform_frame(df)
+        genre_mask = (df_plot['genre1'] == chosen_genre) if chosen_genre != 'All' else (df_plot['genre1'] == df_plot['genre1'])
         size = 11 if x == 'year' else 9
-        
-        fig = go.Figure()
 
-        for idx, decade in enumerate(df_plot['decade'].sort_values(ascending=False).unique()):
-            data = df_plot[df_plot['decade'] == decade]
-            fig.add_trace(go.Scatter(
-                x=data[x], 
-                y=data[y], 
-                mode='markers', 
-                marker=dict(line=dict(color='black', width=1), opacity=.9, color=px.colors.qualitative.Pastel[idx], size=size),
-                hovertemplate='<b>Title</b>: ' + data['title'] + ' (' + data['year'].astype(str) +') ' + '<br><b>Gross</b>: ' + data[y].div(1000000).map("${:,.1f} M".format) + '<br><b>Rating</b>: ' + data[x].astype(str) + '<extra></extra>',
-                name=f"{decade}s",
-                showlegend=True)
-                )
-        # for year in df_plot['year'].unique():
-        #     data = df_plot[df_plot['year'] == year]
-        #     decade = year // 10 * 10
-        #     fig.add_trace(go.Scatter(
-        #         x=data[x], 
-        #         y=data[y], 
-        #         mode='markers', 
-        #         marker=dict(line=dict(color='black', width=0.5), color=px.colors.qualitative.Pastel[decades[decade]], size=size),
-        #         hovertemplate='<b>Title</b>: ' + data['title'] + ' (' + data['year'].astype(str) +') ' + '<br><b>Gross</b>: ' + data[y].div(1000000).map("${:,.1f} M".format) + '<br><b>Rating</b>: ' + data[x].astype(str) + '<extra></extra>',
-        #         showlegend=True)
-        #         )
-            
+        ## TODO: There are some movies that have 'decade' == 0.  Need to manually add their correct data in 'specific_fixes' in the imdb_acquisition.py file.  Until then, must drop them here.
+
+        colors = 5 * px.colors.qualitative.Pastel
+
+        def plot_unchosen_genre(fig: go.Figure, df_plot: pd.DataFrame):
+            for decade in df_plot['decade'].unique():
+                data_grey = df_plot[(df_plot['decade'] == decade) & ~genre_mask]
+                
+                fig.add_trace(go.Scatter(
+                    x=data_grey[x],
+                    y=data_grey[y],
+                    mode='markers',
+                    name=f"{decade}0s.",
+                    marker=dict(color='grey', size=9, opacity=.4, line=dict(color='black', width=1)),
+                    hoverinfo='skip',
+                    showlegend=False,
+                ))
+
+        def plot_chosen_genre(fig: go.Figure, df_plot: pd.DataFrame):
+            for idx, decade in enumerate(df_plot['decade'].unique()):
+                data_clr = df_plot[(df_plot['decade'] == decade) & genre_mask]
+
+                fig.add_trace(go.Scatter(
+                    x=data_clr[x],
+                    y=data_clr[y],
+                    mode='markers',
+                    name=f"{decade}s",
+                    marker=dict(color=colors[idx], size=12 if chosen_genre != 'All' else 11, opacity=1 if chosen_genre != 'All' else .8, line=dict(color='black', width=1)),
+                    hovertemplate='<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Gross</b>: ' + data_clr[y].div(1000000).map("${:,.1f} M".format) + '<br><b>Rating</b>: ' + data_clr[x].map('{:.1f}'.format).astype(str) + '<extra></extra>',
+                    showlegend=True,
+                ))
+
+        fig = go.Figure()
+        plot_unchosen_genre(fig, df_plot) ## add grey first so that the colored points are on top
+        plot_chosen_genre(fig, df_plot)
+
         fig.update_layout(width=1000,
                           height=500
                         # title={'font_color': blue_bath1[1], 'font_size': 23, # 'font_family': "Times New Roman", 'text': "Gross over Time", 'y':0.9, 'x':0.5, 'xanchor': 'center', 'yanchor': 'top'}

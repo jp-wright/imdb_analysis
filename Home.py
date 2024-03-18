@@ -26,8 +26,6 @@ class PageHome():
             self.df = st.session_state.df
 
         self.get_list_input()
-        # st.write(st.session_state.df)
-        # st.write(st.session_state)
 
         if st.session_state.film_frame:
             self.list_preview()
@@ -43,6 +41,7 @@ class PageHome():
         init_to_null(state, 'list_processed', False)
         init_to_null(state, 'film_frame', False)
         init_to_null(state, 'df', None)
+        init_to_null(state, 'demo_name', None)
         init_to_null(state, 'url', None)
         init_to_null(state, 'correct_guesses', 0)
         init_to_null(state, 'total_session_guesses', 0)
@@ -69,8 +68,7 @@ class PageHome():
             match = re.search(r".*((list|user)/(?P<list_id>(ls|ur)\d+))/?\??", url)
             if match:
                 self.list_id = match.group("list_id")
-                if not st.session_state.list_id: 
-                    st.session_state.list_id = self.list_id
+                st.session_state.list_id = match.group("list_id")
             else:
                 st.error('🚨 Provided URL {url} not of an IMDb list.')
                 logging.error(f"Provided URL {url} not of an IMDb list.")
@@ -81,14 +79,23 @@ class PageHome():
             col1, col2 = st.columns([.75, .25])
             with col1:
                 with st.form(key="url_form", clear_on_submit=False):
-                        self.url = st.text_input("Paste the URL of the IMDb list you want to scrape (any page of the list is fine):", key='list_url_input', value='https://www.imdb.com/user/ur178218918/watchlist?ref_=nv_usr_wl_all_0').strip()
-                        # self.url = st.text_input("Paste the URL of the IMDb list you want to scrape (any page of the list is fine):", key='list_url_input', value='https://www.imdb.com/list/ls528069836/').strip()
+                        ## Rando Big List
+                        # self.url = st.text_input("Paste the URL of the IMDb list you want to scrape (any page of the list is fine):", key='list_url_input', value='https://www.imdb.com/user/ur178218918/watchlist?ref_=nv_usr_wl_all_0').strip()
+                        
+                        ## WFF
+                        self.url = st.text_input("Paste the URL of the IMDb list you want to scrape (any page of the list is fine):", key='list_url_input', value='https://www.imdb.com/list/ls528069836/').strip()
+                        
+                        ## Small
+                        # self.url = st.text_input("Paste the URL of the IMDb list you want to scrape (any page of the list is fine):", key='list_url_input', value='https://www.imdb.com/list/ls528389832/').strip()
+
+                        ## Oscar Best Pictures
+                        # self.url = st.text_input("Paste the URL of the IMDb list you want to scrape (any page of the list is fine):", key='list_url_input', value='https://www.imdb.com/list/ls524226422/?ref_=tt_c_osc_csegosc_bpwinners_cta').strip()
                         submitted = st.form_submit_button("Submit")
                         if submitted:
                             if 'www.imdb.com/list/' in self.url or 'www.imdb.com/user/' in self.url:
                                 get_list_id(self.url)
                                 with st.spinner('Scraping...'):
-                                    self.scrape_list(self.url)
+                                    self.acquire_list(self.url)
                                 st.success('List scraped successfully!', icon='✅')
                                 st.session_state.film_frame = True
                             else:
@@ -100,7 +107,7 @@ class PageHome():
                 if st.session_state.df is not None:
                     self.save_list_to_csv(st.session_state.df)
 
-    def scrape_list(self, url):
+    def acquire_list(self, url):
         '''load page based on user input'''
         self.imdb = IMDB(url)
         self.df = self.imdb.df
@@ -108,10 +115,10 @@ class PageHome():
 
     def demo_list(self, fname: str='rando'):
         st.markdown(f'<font color={streamlit_blue}>Using a pre-saved list.</font>', unsafe_allow_html=True)
-        self.demo_name = {'rando': 'imdb_demo_list_big_rando',
-                 'wff': 'imdb_demo_list_wff',
-                 'small': 'imdb_demo_list_small',}[fname]
-        self.df = pd.read_csv(f'data/input/{self.demo_name}.csv')
+        st.session_state.demo_name = {'rando': 'imdb_demo_list_big_rando',
+                                        'wff': 'imdb_demo_list_WFF',
+                                        'small': 'imdb_demo_list_small'}[fname]
+        self.df = pd.read_csv(f'data/input/{st.session_state.demo_name}.csv')
         st.session_state.df = self.df
 
     def save_list_to_csv(self, frame: pd.DataFrame):
@@ -120,8 +127,8 @@ class PageHome():
         def convert_df(df):
             return df.to_csv().encode('utf-8')
 
-        csv = convert_df(frame)
-        savename = f'imdb_list_{st.session_state.list_id}.csv' if st.session_state.list_id else f'{self.demo_name}.csv'
+        csv = convert_df(frame.set_index('title'))
+        savename = f'imdb_list_{st.session_state.list_id}.csv' if st.session_state.list_id else f'{st.session_state.demo_name}.csv'
 
         st.download_button(
             label="Download entire list as CSV",
@@ -260,7 +267,7 @@ class PageHome():
 
         def show_total_sesh_stats():
             if st.session_state.total_session_guesses > 0:
-                st.write(f"""<div align=center>You've made {st.session_state.correct_guesses} correct guesses out of {st.session_state.total_session_guesses} total guesses this session.  That's a {st.session_state.correct_guesses/st.session_state.total_session_guesses:.0%} success rate!</div>""", unsafe_allow_html=True)
+                st.write(f"""<div align=center>You've made <font color={streamlit_blue}><b>{st.session_state.correct_guesses}</b></font> correct guesses out of {st.session_state.total_session_guesses} total guesses this session.  That's a {st.session_state.correct_guesses/st.session_state.total_session_guesses:.0%} success rate!</div>""", unsafe_allow_html=True)
 
 
 
@@ -280,11 +287,11 @@ class PageHome():
 
         show_total_sesh_stats()
 
-    def create_dummy_frames(self, frame: pd.DataFrame):
-        if st.session_state.dummy_genre is None:
-            st.session_state.dummy_genre = utl.dummy_all_genres(frame)
-        if st.session_state.dummy_star is None:
-            st.session_state.dummy_star = utl.dummy_all_stars(frame)
+    # def create_dummy_frames(self, frame: pd.DataFrame):
+    #     if st.session_state.dummy_genre is None:
+    #         st.session_state.dummy_genre = utl.dummy_all_genres(frame)
+    #     if st.session_state.dummy_star is None:
+    #         st.session_state.dummy_star = utl.dummy_all_stars(frame)
 
 
 
