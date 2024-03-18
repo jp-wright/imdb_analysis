@@ -78,7 +78,7 @@ def set_frame(load_demo: bool=False, url: Optional[str]=None):
     elif load_demo:
         with st.spinner('Loading Data...'):
             # time.sleep(3)
-            frame = read_csv('data/input/imdb_demo_list.csv', dtype=({'year': int, 'gross': float}))
+            frame = read_csv('data/input/imdb_demo_list_WFF.csv', dtype=({'year': int, 'gross': float}))
             # frame = read_csv('data/input/imdb_big_list.csv', dtype=({'year': int, 'decade': int, 'gross': float}))
             st.session_state.df = frame
     else:

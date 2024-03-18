@@ -10,15 +10,17 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
 # logging.basicConfig(level=logging.INFO, filename='logs/imdb_acquisition.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 from bs4 import BeautifulSoup
-from pandas import DataFrame, read_csv, concat
+from pandas import DataFrame, read_csv, concat, cut, qcut
 from numpy import where
 from streamlit import write, error
 from utils.utilities import get_now, adjust_for_inflation
+from utils.reference_info import gross_dct
 
 
 class IMDB():
     def __init__(self, url: str) -> None:
         self.ATTRS = dict(title=r'href="/title/.*">(.+)</',
+                        title_id=r'href="/title/(tt[\w\d]+)/',
                         year=r'class="lister-item-year text-muted unbold">.*\s?\((\d+)\)',
                         metacritic_rk=r'class="lister-item-index unbold text-primary">(\d+)',
                         metacritic_score=r'metascore\s\w+">(\d+)',
@@ -63,26 +65,26 @@ class IMDB():
 
     def get_pages_in_list(self, soup):
         try:
-            tot_films = int(re.search(r'(\d+) titles', str(soup.find('div', attrs={'class': 'desc lister-total-num-results'}))).group(1))
-        except (AttributeError, IndexError, TypeError):
+            tot_films = re.search(r'([\d,]+) titles', str(soup.find('div', attrs={'class': 'desc lister-total-num-results'}))).group(1)
+            tot_films = int(tot_films.replace(',', ''))  ## remove commas for list of 1,000+
+        except (AttributeError, IndexError, TypeError) as e:
+            error(f"🚨 {e}: Number of pages in IMDb list not found.  Will not be able to acquire full list at this time.")
             tot_films = 0
 
         ## if less than 100 films, set to 100 so we can iterate through pages downstream
         if tot_films < 100: tot_films = 100
 
-        return int(tot_films/100)+1
+        return int(tot_films/100)
          
     def get_soup(self, url):
         r = requests.get(url)
-        write(r.text)
-        con = BeautifulSoup(r.content, 'html.parser')
-        if 'This list is not public'.lower() in con.text.lower():
+        soup = BeautifulSoup(r.content, 'html.parser')
+        if 'This list is not public'.lower() in soup.text.lower():
             error("🚨 This list is not public.  Please make it public in 'EDIT' (top right of list) then 'SETTINGS' on IMDb and try again.")
             raise Exception("List acquisition failed.  List is not public.")
-        # return BeautifulSoup(r.content, 'html.parser')
-        return con
+        return soup
 
-    def get_title(self, soup):
+    def get_list_title(self, soup):
         '''Get title of list for later CSV output.'''
         title = soup.find('h1', attrs={'class': 'header list-name'})
         if title:
@@ -104,7 +106,7 @@ class IMDB():
                 res = 'N/A' if attr in ['director', 'description'] else '0'        
             dct.update({attr: res})
             if attr == 'title':
-                print("scraping:", res)
+                print("Acquiring:", res)
         return dct
 
     def get_stars(self, text):
@@ -125,6 +127,7 @@ class IMDB():
         frame = self.split_genres(frame)
         frame = self.split_stars(frame)
         frame = self.scale_imdb_rating_and_add_combo_col(frame)
+        frame = self.add_critic_vs_ppl_col(frame)
         frame = self.add_rank_cols(frame)
         frame = self.create_col_decade(frame)
         frame = self.clean_frame(frame)
@@ -156,9 +159,15 @@ class IMDB():
                 .assign(combo_score=lambda f: where(f['metacritic_score']>0, f['imdb_score'].mul(imdb_wt).add(f['metacritic_score'].mul(mc_wt)), 0))
         return frame
 
+    def add_critic_vs_ppl_col(self, frame):
+        '''Add column for difference between Metacritic and IMDb scores'''
+        return frame.assign(critic_vs_ppl=lambda f: where(f['metacritic_score'].astype(int) > 0, f['metacritic_score'].sub(f['imdb_score']), 0))\
+                    .assign(critic_vs_ppl_bin=lambda f: cut(f['critic_vs_ppl'].astype(float), 5, 
+                                                             labels=['vlow', 'low', 'avg', 'high', 'vhigh']))
+
     def add_rank_cols(self, frame):
         '''Add rank columns for each rating type, and for combo rating'''
-        for col in ['imdb_score', 'metacritic_score', 'combo_score', 'gross']:
+        for col in ['imdb_score', 'metacritic_score', 'combo_score', 'gross', 'critic_vs_ppl']:
             frame = frame.assign(**{f"{col.replace('score', 'rk') if col != 'gross' else col+'_rk'}": frame[col].astype(str).str.replace(',', '').astype(float).rank(ascending=False, method='dense')})
         return frame
 
@@ -181,7 +190,8 @@ class IMDB():
                 .assign(decade=lambda f: f['decade'].astype(str).str.replace(',', '').astype(int))\
                 .assign(gross=lambda f: f['gross'].astype(str).str.replace(',', '').astype(int))\
                 .assign(gross_rk=lambda f: f['gross_rk'].astype(int).astype(str).str.replace(',', '').astype(int))\
-                .assign(imdb_votes=lambda f: f['imdb_votes'].astype(str).str.replace(',', '').astype(int))
+                .assign(imdb_votes=lambda f: f['imdb_votes'].astype(str).str.replace(',', '').astype(int))\
+                .assign(title=lambda f: f['title'].str.replace(r'&amp;', r'&'))
 
     def create_col_gross_adj(self, frame: DataFrame):
         '''adjust gross for inflation in 2023 dollars.  Add as new column *after* clean_frame() enforces 'gross' col to be int.  Extra logic handles films with missing years by setting their adj_gross to 0.  These are commonly TV Movies.  It is possible their years are available on IMDb, but I'll have to adjust the scraper and add extra logic.  Passing for now.'''
@@ -193,20 +203,23 @@ class IMDB():
         return frame.assign(gross_adj_2023=lambda f: f['gross_adj_2023'].astype(int)).assign(gross_adj_2023_rk=lambda f: f['gross_adj_2023'].rank(ascending=False, method='dense').astype(int))
          
     def specific_fixes(self, frame):
-        """Fixes for specific films.  Will be added to over time."""
-        frame.loc[frame['title'] == 'Chinatown', 'gross'] = 29200000
-        frame.loc[frame['title'] == 'Rebel Without a Cause', 'gross'] = 7197000
-        frame.loc[frame['title'] == '42 Up', 'year'] = 1998
-        frame.loc[frame['title'] == '49 Up', 'year'] = 2005
-        frame.loc[frame['title'] == "Vies et morts d'Andy Warhol", 'year'] = 2005
+        """Fixes for specific films.  Will be added to over time.
+            Gross is for USA, not worldwide, when possible.
+        """
+        ### gross_dct structure: {film: [gross, year]}
+        for film, data in gross_dct.items():
+            title_mask = (frame['title'].str.lower() == film.lower())
+            year_mask = (frame['year'].astype(str) == str(data[1]))
+            if not frame[title_mask & year_mask].empty:
+                frame.loc[title_mask & year_mask, 'gross'] = where(frame.loc[title_mask & year_mask, 'gross'].astype(str) == '0', str(gross_dct[film][0]), frame.loc[title_mask & year_mask, 'gross'])
         return frame
 
     def order_cols(self, frame):
-        cols = ['title', 'year', 'decade', 'combo_score', 'combo_rk', 'metacritic_score', 'metacritic_rk', 'imdb_score', 'imdb_rk', 'certificate', 'runtime_mins']\
+        cols = ['title', 'year', 'decade', 'combo_score', 'combo_rk', 'metacritic_score', 'metacritic_rk', 'imdb_score', 'imdb_rk', 'critic_vs_ppl', 'critic_vs_ppl_bin', 'certificate', 'runtime_mins']\
             + [c for c in frame.columns if 'genre' in c]\
             + ['director']\
             + [c for c in frame.columns if 'star' in c]\
-            + ['gross', 'gross_rk', 'gross_adj_2023', 'gross_adj_2023_rk', 'imdb_votes', 'description']
+            + ['gross', 'gross_rk', 'gross_adj_2023', 'gross_adj_2023_rk', 'imdb_votes', 'title_id', 'description']
         assert len(cols) == len(frame.columns), 'Missing columns in order_cols()'
         return frame[cols].sort_values(['combo_rk', 'year', 'title'])
 
@@ -214,29 +227,25 @@ class IMDB():
         all_films = {}
         url_stem = self.get_url_stem(url)
 
-        ## always want to scrape entire list, even if URL is for a specific page
-        logging.info(f'{get_now()} Scraping {url_stem}')
-        # write(url_stem)
+        ## always want to get entire list, even if URL is for a specific page, so get the stem
+        logging.info(f'{get_now()} Acquiring {url_stem}')
         soup = self.get_soup(url_stem)
-        # write(soup.text[10000:11000])
-        # soup = self.get_soup(f'{url_stem}?sort=list_order,asc&st_dt=&mode=detail&page=1')
-        self.title = self.get_title(soup)
-        # write(f'Acquiring IMDb List: [{self.title}]({url_stem})')
-        
+        self.title = self.get_list_title(soup)
 
         def churn_non_watchlist(soup):
             """Scrape all pages of list.  New page every 100 films. If list has more than 100 films, scrape all pages.  If less than 100, scrape just the first page.  This is because the URL for the first page of a list is the same as the URL for the entire list.  If the list has more than 100 films, the URL for the first page will have a query string with a page number.  This is the only way to scrape the entire list."""
             pages = self.get_pages_in_list(soup)
-            for page, url in enumerate([f'{url_stem}?sort=list_order,asc&st_dt=&mode=detail&page={p}' for p in range(1, pages)], 1):
+            dur = f"{(pages+1)*18} seconds" if pages < 5 else f"{((pages+1)*18/60):.1f} minutes"
+            write(f"ETA: ~{dur}")
+            for page, url in enumerate([f'{url_stem}?sort=list_order,asc&st_dt=&mode=detail&page={p}' for p in range(1, pages+2)], 1):
                 ## skip re-souping first page, already souped
                 if page > 1:
-                    print("Sleeping 15 seconds.\n")
+                    logging.info("Sleeping 15 seconds.\n")
                     time.sleep(15)  ## don't want to get blocked
-                    logging.info(f'{get_now()} Scraping {url}')
+                    logging.info(f'{get_now()} Acquiring {url}')
                     soup = self.get_soup(url)
 
-                # print(f'Scraping page {page}...')
-                logging.info(f'{get_now()} Scraping {page}')
+                logging.info(f'{get_now()} Acquiring {page}')
 
                 for film in self.get_films(soup):
                     data = self.get_all_attributes(str(film))
@@ -246,7 +255,6 @@ class IMDB():
 
         def churn_watchlist(soup):
             """So far as I can tell, user 'Watchlist's do not have pages, even if they eclipse 100 films. This might be a problem if a user has more than 100 films on their watchlist.  I'll have to test this. ...unsure if page loads all 100+ films without a user scrolling..."""
-            write("WATCHLIST")
             for film in self.get_films(soup):
                 write(film)
                 data = self.get_all_attributes(str(film))
@@ -265,9 +273,9 @@ class IMDB():
         list_id = self.get_list_id(url)
         frame.to_csv(f'data/output/imdb_list_{list_id}.csv', index=None)
         logging.info(f'{get_now()} imdb_list_{list_id}.csv saved to data/output')
-        logging.info(f"{get_now()} Scraping complete: {url_stem}")
+        logging.info(f"{get_now()} Acquisition complete: {url_stem}")
         print(f"imdb_{list_id}.csv saved to data/output")
-        print(f"Scraping complete: {url_stem}")
+        print(f"Acquisition complete: {url_stem}")
         return frame.reset_index(drop=True)
 
 

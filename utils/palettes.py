@@ -1,38 +1,6 @@
-bg_clr_dct = {
-    'Alex': '#fff2cc',
-    'Mike': '#cfe2f3',
-    'JP': '#d9ead3',
-    'Jordan': '#f4cccc',
-    'Brandon': '#e6b8af',
-    'Jackson': '#d9d2e9',
-    'Dan': '#fce5cd',
-    'Victoria': '#FFDAEC',
-    # 'Victoria': '#FFB2E4',
-    'LEFTOVER': '#d9d9d9',
-    'Leftover': '#d9d9d9',
-    }
+bg_clr_dct = ['#fff2cc', '#cfe2f3', '#d9ead3', '#f4cccc', '#e6b8af', '#d9d2e9', '#fce5cd', '#FFDAEC', '#FFB2E4', '#d9d9d9']
 
-plot_bg_clr_dct = {
-    'Alex': '#ffd966',
-    'Brandon': '#da988b',
-    'Dan': '#f7b56e',
-    'JP': '#a6cd98',
-    'Jackson': '#a898cd',
-    'Jordan': '#e48181',
-    'Leftover': '#b3b3b3',
-    'Mike': '#85b6e0',
-    'Victoria': '#FFB2E4',
-    # 'LEFTOVER': '#b3b3b3',
-    }
-
-conf_clr_dct = {
-    'AFC': 'red',
-    'NFC': 'blue',
-    }
-
-
-
-
+plot_bg_clr_dct = ['#ffd966', '#da988b', '#f7b56e', '#a6cd98', '#a898cd', '#e48181', '#b3b3b3', '#85b6e0', '#FFB2E4', '#b3b3b3']
 
 # All from images at https://sophisticated-palette.streamlit.app/
 
