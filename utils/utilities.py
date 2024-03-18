@@ -105,9 +105,10 @@ def clean_film_name(film: str) -> str:
     ## consider removing numbers for comparison too? Avoids '2' vs 'two' vs 'II' issues.
     ## but then also results in Godfather == Godfather2 == Godfather3 b/c the numbers are removed.
     film = film.strip().lower()
-    film = sub('(\&a?m?p?;?)', 'and', film)   # replace '&' or '&amp;' with 'and'
-    film = sub('\'n', 'and', film) # replace 'n with "and"
-    film = sub('(p?a?rt)', '', film) # remove 'part' or 'pt' from the title
-    film = sub('[\'\,\:\.\!\"\?\·]+', '', film) # remove punctuation
-    film = sub('\s| ', '', film) # finally, remove spaces
+    film = sub(r'(\&a?m?p?;?)', 'and', film)   # replace '&' or '&amp;' with 'and'
+    film = sub(r'\'n\s', 'and', film) # replace 'n with "and"
+    film = sub(r'\s?((T|t)he)\s', '', film) # remove 'the' from the title
+    film = sub(r'(p?a?rt)', '', film) # remove 'part' or 'pt' from the title
+    film = sub(r'[\'\,\-\:\.\!\"\?\·]+', '', film) # remove punctuation
+    film = sub(r'(\s| )+', '', film) # finally, remove spaces
     return film
