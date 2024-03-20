@@ -188,47 +188,59 @@ class PageBoxOffice():
         with c4:
             y = st.radio('Select Rating System', ['metacritic_score', 'imdb_score', 'combo_score'], index=1, key='y_dir_rating_over_time_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
 
+
         @st.cache_data
         def transform_frame(df: pd.DataFrame, x: str, y: str):
-            return df[df[y] > 0].groupby([x, 'director'])[y].mean().round(1)\
-                                .reset_index()
-                                # .unstack()\
-                                # .fillna(0)
-                                        
-        df_plot = transform_frame(df, x, y)#.style.format("{:.1f}")
+            frame = df[(df[y] > 0) & (df['year'] > 0)].groupby([x, 'director'])[y].agg(['mean', 'count'])\
+                                                        .rename(columns={'mean': y, 'count': 'films'})\
+                                                        .round(1)\
+                                                        .reset_index()
+            if x == 'year':
+                frame = frame.merge(df[['year', 'director', 'title']], left_on=['year', 'director'], right_on=['year', 'director'], how='left')
+            return frame
+        
+        df_plot = transform_frame(df, x, y)
+
         st.write(df_plot.head(3))
         dir_mask = (df_plot['director'] == chosen_dir) if chosen_dir != 'All' else (df_plot['director'] == df_plot['director'])
         size = 11 if x == 'year' else 9
 
-        ## TODO: There are some movies that have 'decade' == 0.  Need to manually add their correct data in 'specific_fixes' in the imdb_acquisition.py file.  Until then, must drop them here.
+        def hover(x, y, data_clr: pd.DataFrame):
+            if x == 'year':
+                hov = '<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Rating</b>: ' + data_clr[y].map('{:.1f}'.format).astype(str) + '<extra></extra>'
+            else:
+                hov = '<b>Dir</b>: ' + data_clr['director'] + ' (' + data_clr['decade'].astype(str) +'s) ' + '<br><b>Films</b>: ' + data_clr['films'].astype(str) + '<br><b>Avg. Rating</b>: ' + data_clr[y].map('{:.1f}'.format).astype(str) + '<extra></extra>'
+            return hov
 
-        colors = 5 * px.colors.qualitative.Pastel
+        
+        colors = 50 * px.colors.qualitative.Pastel
 
         def plot_unchosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
-            for decade in df_plot['decade'].unique():
-                data_grey = df_plot[(df_plot['decade'] == decade) & ~dir_mask]
+            for timeframe in df_plot[x].unique():
+                data_grey = df_plot[(df_plot[x] == timeframe) & ~dir_mask]
                 
                 fig.add_trace(go.Scatter(
                     x=data_grey[x],
                     y=data_grey[y],
                     mode='markers',
-                    name=f"{decade}0s.",
+                    name=f"{timeframe}s" if x == 'decade' else f"{timeframe}",
                     marker=dict(color='grey', size=9, opacity=.4, line=dict(color='black', width=1)),
                     hoverinfo='skip',
                     showlegend=False,
                 ))
 
         def plot_chosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
-            for idx, decade in enumerate(df_plot['decade'].unique()):
-                data_clr = df_plot[(df_plot['decade'] == decade) & dir_mask]
+            for idx, timeframe in enumerate(df_plot[x].unique()):
+                data_clr = df_plot[(df_plot[x] == timeframe) & dir_mask]
 
                 fig.add_trace(go.Scatter(
                     x=data_clr[x],
                     y=data_clr[y],
-                    mode='markers',
-                    name=f"{decade}s",
+                    mode='markers+lines',
+                    name=f"{timeframe}s" if x == 'decade' else f"{timeframe}",
                     marker=dict(color=colors[idx], size=12 if chosen_dir != 'All' else 11, opacity=1 if chosen_dir != 'All' else .8, line=dict(color='black', width=1)),
-                    hovertemplate='<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Rating</b>: ' + data_clr[x].map('{:.1f}'.format).astype(str) + '<extra></extra>',
+                    hovertemplate=hover(x, y, data_clr),
+                    # hovertemplate='<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Rating</b>: ' + data_clr[x].map('{:.1f}'.format).astype(str) + '<extra></extra>',
                     showlegend=True,
                 ))
 
