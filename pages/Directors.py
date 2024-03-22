@@ -91,9 +91,9 @@ class PageBoxOffice():
         def show_more_info():
             # st.markdown(f"<h5><font color={blue_bath1[1]}>Home Video and Streaming</font></h5>", unsafe_allow_html=True)
             self.element_header("")
-            st.markdown("""""")  
+            st.markdown("""""")
             
-            st.markdown("""""")  
+            st.markdown("""""")
             
             st.markdown("""""")
 
@@ -179,13 +179,16 @@ class PageBoxOffice():
     def plot_dir_rating_over_time(self, df: pd.DataFrame=pd.DataFrame()):
         self.element_header("Director Rating Over Time")
 
-        c1, c2, _, c4 = st.columns([.35, .25, .15, .25])
+        c1, c2, c3 = st.columns([.25, .5, .25])
         with c1:
             x = st.radio('Select Timeframe', ['year', 'decade'], index=1, key='x_dir_rating_over_time_radio', horizontal=True)
         with c2:
-            chosen_dir = st.selectbox('Select Director', ['All'] + list(df['director'].unique()), index=1, key='dir_rating_over_time_selectbox')
-            st.markdown(f"<div align=center>{df[df['director']==chosen_dir].shape[0]} films</div>" if chosen_dir != 'All' else '', unsafe_allow_html=True)
-        with c4:
+            chosen_dir = st.multiselect(
+                            'Select Director(s)',
+                            df['director'].unique().tolist(),
+                            df['director'].unique().tolist()[:2],
+                            key='dir_rating_over_time_multiselect')
+        with c3:
             y = st.radio('Select Rating System', ['metacritic_score', 'imdb_score', 'combo_score'], index=1, key='y_dir_rating_over_time_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
 
 
@@ -201,8 +204,7 @@ class PageBoxOffice():
         
         df_plot = transform_frame(df, x, y)
 
-        st.write(df_plot.head(3))
-        dir_mask = (df_plot['director'] == chosen_dir) if chosen_dir != 'All' else (df_plot['director'] == df_plot['director'])
+        dir_mask = (df_plot['director'].isin(chosen_dir))
         size = 11 if x == 'year' else 9
 
         def hover(x, y, data_clr: pd.DataFrame):
@@ -213,32 +215,249 @@ class PageBoxOffice():
             return hov
 
         
-        colors = 50 * px.colors.qualitative.Pastel
+        colors = int(df_plot.shape[0] / 8) * px.colors.qualitative.Pastel
 
         def plot_unchosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
-            for timeframe in df_plot[x].unique():
-                data_grey = df_plot[(df_plot[x] == timeframe) & ~dir_mask]
+            for director in df_plot['director'].unique():
+                data_grey = df_plot[(df_plot['director'] == director) & ~dir_mask]
                 
                 fig.add_trace(go.Scatter(
                     x=data_grey[x],
                     y=data_grey[y],
                     mode='markers',
-                    name=f"{timeframe}s" if x == 'decade' else f"{timeframe}",
+                    name=f"{director}s" if x == 'decade' else f"{director}",
                     marker=dict(color='grey', size=9, opacity=.4, line=dict(color='black', width=1)),
                     hoverinfo='skip',
                     showlegend=False,
                 ))
 
         def plot_chosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
-            for idx, timeframe in enumerate(df_plot[x].unique()):
-                data_clr = df_plot[(df_plot[x] == timeframe) & dir_mask]
+            for idx, director in enumerate(df_plot['director'].unique()):
+                data_clr = df_plot[(df_plot['director'] == director) & dir_mask]
 
                 fig.add_trace(go.Scatter(
                     x=data_clr[x],
                     y=data_clr[y],
                     mode='markers+lines',
-                    name=f"{timeframe}s" if x == 'decade' else f"{timeframe}",
-                    marker=dict(color=colors[idx], size=12 if chosen_dir != 'All' else 11, opacity=1 if chosen_dir != 'All' else .8, line=dict(color='black', width=1)),
+                    name=f"{director}s" if x == 'decade' else f"{director}",
+                    marker=dict(color=colors[idx], size=12 if len(chosen_dir) < 8 else 11, opacity=1 if len(chosen_dir) < 8 else .8, line=dict(color='black', width=1)),
+                    hovertemplate=hover(x, y, data_clr),
+                    showlegend=True,
+                ))
+
+        fig = go.Figure()
+        plot_unchosen_dir(fig, df_plot) ## add grey first so that the colored points are on top
+        plot_chosen_dir(fig, df_plot)
+
+        fig.update_layout(width=1000,
+                          height=500,
+                          yaxis_title=y,
+                        # title={'font_color': blue_bath1[1], 'font_size': 23, # 'font_family': "Times New Roman", 'text': "Gross over Time", 'y':0.9, 'x':0.5, 'xanchor': 'center', 'yanchor': 'top'}
+                        )
+                            
+        st.plotly_chart(fig)
+        # self.table_top_decades_by_gross_per_film(self.df, y=y)
+
+
+
+    def table_dir_rating_after_n_films(self, df: pd.DataFrame=pd.DataFrame()):
+        """Average scores for the top and bottom grossing films."""
+        
+        self.element_header("How Are Directors Rated After N Films?")
+        
+        col1, _, _, col4 = st.columns([.15, .3, .1, .45])
+        with col1:
+            n = int(st.slider('Select Number of Films', 1, 20, 1, 1, help='Cumulative rating by director after N films', key='top_bottom_slider'))
+        with col4:
+            y = st.radio('Select Rating System', ['metacritic_score', 'imdb_score', 'combo_score'], index=1, key='y_top_bottom_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
+
+        @st.cache_data
+        def transform_frame(df: pd.DataFrame, n: int, y: str):
+            df = df[df[y]>0].sort_values(y, ascending=False)
+
+
+        c1, c2, c3 = st.columns([.25, .5, .25])
+        with c1:
+            x = st.radio('Select Timeframe', ['year', 'decade'], index=1, key='x_dir_rating_over_time_radio', horizontal=True)
+        with c2:
+            chosen_dir = st.multiselect(
+                            'Select Director(s)',
+                            df['director'].unique().tolist(),
+                            df['director'].unique().tolist()[:2],
+                            key='dir_rating_over_time_multiselect')
+        with c3:
+            y = st.radio('Select Rating System', ['metacritic_score', 'imdb_score', 'combo_score'], index=1, key='y_dir_rating_over_time_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
+
+
+        @st.cache_data
+        def transform_frame(df: pd.DataFrame, x: str, y: str):
+            frame = df[(df[y] > 0) & (df['year'] > 0)].groupby([x, 'director'])[y].agg(['mean', 'count'])\
+                                                        .rename(columns={'mean': y, 'count': 'films'})\
+                                                        .round(1)\
+                                                        .reset_index()
+            if x == 'year':
+                frame = frame.merge(df[['year', 'director', 'title']], left_on=['year', 'director'], right_on=['year', 'director'], how='left')
+            return frame
+        
+        df_plot = transform_frame(df, x, y)
+
+        dir_mask = (df_plot['director'].isin(chosen_dir))
+        size = 11 if x == 'year' else 9
+
+        def hover(x, y, data_clr: pd.DataFrame):
+            if x == 'year':
+                hov = '<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Rating</b>: ' + data_clr[y].map('{:.1f}'.format).astype(str) + '<extra></extra>'
+            else:
+                hov = '<b>Dir</b>: ' + data_clr['director'] + ' (' + data_clr['decade'].astype(str) +'s) ' + '<br><b>Films</b>: ' + data_clr['films'].astype(str) + '<br><b>Avg. Rating</b>: ' + data_clr[y].map('{:.1f}'.format).astype(str) + '<extra></extra>'
+            return hov
+
+        
+        colors = int(df_plot.shape[0] / 8) * px.colors.qualitative.Pastel
+
+        def plot_unchosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
+            for director in df_plot['director'].unique():
+                data_grey = df_plot[(df_plot['director'] == director) & ~dir_mask]
+                
+                fig.add_trace(go.Scatter(
+                    x=data_grey[x],
+                    y=data_grey[y],
+                    mode='markers',
+                    name=f"{director}s" if x == 'decade' else f"{director}",
+                    marker=dict(color='grey', size=9, opacity=.4, line=dict(color='black', width=1)),
+                    hoverinfo='skip',
+                    showlegend=False,
+                ))
+
+        def plot_chosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
+            for idx, director in enumerate(df_plot['director'].unique()):
+                data_clr = df_plot[(df_plot['director'] == director) & dir_mask]
+
+                fig.add_trace(go.Scatter(
+                    x=data_clr[x],
+                    y=data_clr[y],
+                    mode='markers+lines',
+                    name=f"{director}s" if x == 'decade' else f"{director}",
+                    marker=dict(color=colors[idx], size=12 if len(chosen_dir) < 8 else 11, opacity=1 if len(chosen_dir) < 8 else .8, line=dict(color='black', width=1)),
+                    hovertemplate=hover(x, y, data_clr),
+                    showlegend=True,
+                ))
+
+        fig = go.Figure()
+        plot_unchosen_dir(fig, df_plot) ## add grey first so that the colored points are on top
+        plot_chosen_dir(fig, df_plot)
+
+        fig.update_layout(width=1000,
+                          height=500,
+                          yaxis_title=y,
+                        # title={'font_color': blue_bath1[1], 'font_size': 23, # 'font_family': "Times New Roman", 'text': "Gross over Time", 'y':0.9, 'x':0.5, 'xanchor': 'center', 'yanchor': 'top'}
+                        )
+                            
+        st.plotly_chart(fig)
+
+
+
+    def table_top_grossing_directors(self, df: pd.DataFrame=pd.DataFrame()):
+        self.element_header("Top Rated Directors")
+
+        c1, _, c3 = st.columns([.35, .4, .25])
+        with c1:
+            x = st.radio('Select Box Office Revenue', ['gross', 'gross_adj_2023'], key='x_dir_gross_radio', format_func=lambda label: 'raw gross' if label == 'gross' else 'inflation adj.', horizontal=True)
+        with c3:
+            n = int(st.slider('Min. Number of Films', 1, 10, 2, 1, key='n_dir_gross_radio'))
+
+        @st.cache_data
+        def transform_frame(df: pd.DataFrame, x: str, n: int):
+            return df[df[x] > 0].groupby('director')[x].mean().round(1)\
+                                .sort_values(ascending=False)\
+                                .to_frame()\
+                                .reset_index()\
+                                .rename(columns={x: f'avg. gross'})\
+                                .assign(films=lambda df_: df_['director'].map(df['director'].value_counts()))\
+                                .query("films > @n")\
+                                .assign(rank=lambda df_: df_[f'avg. gross'].rank(ascending=False, method='dense').astype(int))\
+                                .set_index('rank')\
+                                .head(15)
+        
+        frame = transform_frame(df, x, n)
+
+        col1, col2, col3 = st.columns([.33, .33, .34])
+        with col1:
+            st.dataframe(frame.iloc[:5].style.format({'avg. gross': "{:.1f}"}), use_container_width=False)
+        with col2:
+            if frame.shape[0] > 5:
+                st.dataframe(frame.iloc[5:10].style.format({'avg. gross': "{:.1f}"}), use_container_width=False)
+        with col3:
+            if frame.shape[0] > 10:
+                st.dataframe(frame.iloc[10:].style.format({'avg. gross': "{:.1f}"}), use_container_width=False)
+
+        st.markdown("")
+
+    def plot_dir_gross_over_time(self, df: pd.DataFrame=pd.DataFrame()):
+        self.element_header("Director Rating Over Time")
+
+        c1, c2, c3 = st.columns([.25, .5, .25])
+        with c1:
+            x = st.radio('Select Timeframe', ['year', 'decade'], index=1, key='x_dir_rating_over_time_radio', horizontal=True)
+        with c2:
+            chosen_dir = st.multiselect(
+                            'Select Director(s)',
+                            df['director'].unique().tolist(),
+                            df['director'].unique().tolist()[:2],
+                            key='dir_rating_over_time_multiselect')
+        with c3:
+            y = st.radio('Select Box Office Revenue', ['gross', 'gross_adj_2023'], key='y_dir_gross_over_time_radio', format_func=lambda label: 'raw gross' if label == 'gross' else 'inflation adj.', horizontal=True)
+
+
+        @st.cache_data
+        def transform_frame(df: pd.DataFrame, x: str, y: str):
+            frame = df[(df[y] > 0) & (df['year'] > 0)].groupby([x, 'director'])[y].agg(['mean', 'count'])\
+                                                        .rename(columns={'mean': y, 'count': 'films'})\
+                                                        .round(1)\
+                                                        .reset_index()
+            if x == 'year':
+                frame = frame.merge(df[['year', 'director', 'title']], left_on=['year', 'director'], right_on=['year', 'director'], how='left')
+            return frame
+        
+        df_plot = transform_frame(df, x, y)
+
+        # dir_mask = (df_plot['director'] == chosen_dir) if chosen_dir != 'All' else (df_plot['director'] == df_plot['director'])
+        dir_mask = (df_plot['director'].isin(chosen_dir))
+        size = 11 if x == 'year' else 9
+
+        def hover(x, y, data_clr: pd.DataFrame):
+            if x == 'year':
+                hov = '<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Rating</b>: ' + data_clr[y].map('{:.1f}'.format).astype(str) + '<extra></extra>'
+            else:
+                hov = '<b>Dir</b>: ' + data_clr['director'] + ' (' + data_clr['decade'].astype(str) +'s) ' + '<br><b>Films</b>: ' + data_clr['films'].astype(str) + '<br><b>Avg. Rating</b>: ' + data_clr[y].map('{:.1f}'.format).astype(str) + '<extra></extra>'
+            return hov
+
+        
+        colors = int(df_plot.shape[0] / 8) * px.colors.qualitative.Pastel
+
+        def plot_unchosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
+            for director in df_plot['director'].unique():
+                data_grey = df_plot[(df_plot['director'] == director) & ~dir_mask]
+                
+                fig.add_trace(go.Scatter(
+                    x=data_grey[x],
+                    y=data_grey[y],
+                    mode='markers',
+                    name=f"{director}s" if x == 'decade' else f"{director}",
+                    marker=dict(color='grey', size=9, opacity=.4, line=dict(color='black', width=1)),
+                    hoverinfo='skip',
+                    showlegend=False,
+                ))
+
+        def plot_chosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
+            for idx, director in enumerate(df_plot['director'].unique()):
+                data_clr = df_plot[(df_plot['director'] == director) & dir_mask]
+
+                fig.add_trace(go.Scatter(
+                    x=data_clr[x],
+                    y=data_clr[y],
+                    mode='markers+lines',
+                    name=f"{director}s" if x == 'decade' else f"{director}",
+                    marker=dict(color=colors[idx], size=12 if len(chosen_dir) < 8 else 11, opacity=1 if len(chosen_dir) < 8 else .8, line=dict(color='black', width=1)),
                     hovertemplate=hover(x, y, data_clr),
                     # hovertemplate='<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Rating</b>: ' + data_clr[x].map('{:.1f}'.format).astype(str) + '<extra></extra>',
                     showlegend=True,
@@ -255,7 +474,13 @@ class PageBoxOffice():
                         )
                             
         st.plotly_chart(fig)
-        self.table_top_decades_by_gross_per_film(self.df, y=y)
+        # self.table_top_decades_by_gross_per_film(self.df, y=y)
+
+
+
+
+
+
 
     def table_top_gross_dir_by_rating(self, df: pd.DataFrame=pd.DataFrame()):
         """Average scores for the top and bottom grossing films."""
@@ -443,7 +668,7 @@ class PageBoxOffice():
                         )
                             
         st.plotly_chart(fig)
-        self.table_top_decades_by_gross_per_film(self.df, y=y)
+        # self.table_top_decades_by_gross_per_film(self.df, y=y)
 
     def remarks_gross_over_time(self):
         st.markdown("""The top grossing films by decade can be intereseting!  Depending on your dataset, there might be very distinct trends which differ from others.  One thing to keep in mind is the increase in both number of theaters and average ticket price as time goes on.  This means that the top grossing films of the 2010s might not be as impressive as the top grossing films of the 1970s, for example.  This is why we adjust for inflation.  It's also why we look at the average gross per film, and not just the total gross of the top films.  The average gross per film can give us a better idea of how profitale films were in a given decade.  Last, most people won't have many films from the 1930s, 1940s, or 1950s, so the data might not be as reliable for those decades.  In theory, it would be great to have at least, say, the top 50 films from each decade to make a comparison.""")
@@ -535,20 +760,7 @@ class PageBoxOffice():
         st.markdown('<BR>', unsafe_allow_html=True)
         st.markdown("""This interactive chart is meant to give some idea of the relative categorical sizes of the genres in your list through bubble size, and, further helps show how adjusting for inflation can alter the average gross by genre.  This change can be quite substantial and shows how genre popularity has changed over time.""")
 
-    def table_top_decades_by_gross_per_film(self, df: pd.DataFrame=pd.DataFrame(), y: str='gross'):
-        # self.element_header("Top Decades by Gross per Film")
-        
-        @st.cache_data
-        def transform_frame(df: pd.DataFrame):
-            decade_stats = df.groupby('decade')[y].mean()
-            decade_stats = decade_stats.div(1000000).map("${:,.0f} M".format)
-            return decade_stats.to_frame().sort_index(axis=1).rename(columns={y: 'Avg. Gross per Film'})
-        
-        decade_stats = transform_frame(df).T.rename(columns=lambda col: f"{col}s")
-        
-        col1, _ = st.columns([.98, .02])
-        with col1:
-            st.dataframe(decade_stats, use_container_width=True)
+
 
     def plot_gross_by_director_plotly(self, df: pd.DataFrame=pd.DataFrame()):
         self.element_header(f"Gross by Director")
