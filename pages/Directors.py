@@ -3,7 +3,7 @@ import pandas as pd
 from plotly import graph_objects as go
 import plotly.express as px
 from utils.streamlit_utilities import gradient, local_css, init_to_null, plot_xy_radio_buttons, set_frame
-from utils.palettes import blue_bath1, fft_knight_male
+from utils.palettes import blue_bath1, fft_knight_male, streamlit_blue, vermeer_pearl
 
 ## top rated dirs
         ## DONE table
@@ -51,22 +51,13 @@ class PageBoxOffice():
         self.table_top_rated_directors(self.df)
         self.plot_dir_rating_over_time(self.df)
         st.markdown('***')
-        # self.table_top_gross_dir_by_rating(self.df)
-        # self.remarks_top_and_bottom_grossing_films()
-        # self.plot_gross_by_rating_plotly(self.df)
-        # st.markdown('***')        
-        # self.plot_gross_over_time_plotly(self.df)
-        # self.remarks_gross_over_time()
-        # st.markdown('***')
-        # self.table_grid_top_genres_over_time(self.df)
-        # self.remarks_top_genres_over_time()
-        # st.markdown('***')
-        # self.plot_gross_by_genre_plotly(self.df)
-        # self.remarks_gross_by_genre()
-        # st.markdown('***')
-        # self.plot_gross_by_director_plotly(self.df)
-        # self.remarks_gross_by_director()
-        # st.markdown('***')
+        self.plot_dir_rating_by_film(self.df)
+        st.markdown('***')
+        self.plot_dir_rating_after_n_films(self.df)
+        # self.table_dir_rating_after_n_films(self.df)
+        
+
+
 
     def initialize_state(self):
         state = st.session_state
@@ -179,6 +170,12 @@ class PageBoxOffice():
     def plot_dir_rating_over_time(self, df: pd.DataFrame=pd.DataFrame()):
         self.element_header("Director Rating Over Time")
 
+        ## Sort this so the default multiselect is the top 3 directors by rating
+        @st.cache_data
+        def sort_frame(df: pd.DataFrame):
+            return df.sort_values('metacritic_score', ascending=False)
+        df = sort_frame(df)
+
         c1, c2, c3 = st.columns([.25, .5, .25])
         with c1:
             x = st.radio('Select Timeframe', ['year', 'decade'], index=1, key='x_dir_rating_over_time_radio', horizontal=True)
@@ -186,7 +183,7 @@ class PageBoxOffice():
             chosen_dir = st.multiselect(
                             'Select Director(s)',
                             df['director'].unique().tolist(),
-                            df['director'].unique().tolist()[:2],
+                            df['director'].unique().tolist()[:3],
                             key='dir_rating_over_time_multiselect')
         with c3:
             y = st.radio('Select Rating System', ['metacritic_score', 'imdb_score', 'combo_score'], index=1, key='y_dir_rating_over_time_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
@@ -232,7 +229,7 @@ class PageBoxOffice():
                 ))
 
         def plot_chosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
-            for idx, director in enumerate(df_plot['director'].unique()):
+            for idx, director in enumerate(df_plot.loc[dir_mask, 'director'].unique()):
                 data_clr = df_plot[(df_plot['director'] == director) & dir_mask]
 
                 fig.add_trace(go.Scatter(
@@ -258,89 +255,80 @@ class PageBoxOffice():
         st.plotly_chart(fig)
         # self.table_top_decades_by_gross_per_film(self.df, y=y)
 
-
-
-    def table_dir_rating_after_n_films(self, df: pd.DataFrame=pd.DataFrame()):
-        """Average scores for the top and bottom grossing films."""
+    def plot_dir_rating_by_film(self, df: pd.DataFrame=pd.DataFrame()):
+        """ """
         
-        self.element_header("How Are Directors Rated After N Films?")
+        self.element_header("How Are Directors Rated Per Film?")
         
-        col1, _, _, col4 = st.columns([.15, .3, .1, .45])
-        with col1:
-            n = int(st.slider('Select Number of Films', 1, 20, 1, 1, help='Cumulative rating by director after N films', key='top_bottom_slider'))
-        with col4:
-            y = st.radio('Select Rating System', ['metacritic_score', 'imdb_score', 'combo_score'], index=1, key='y_top_bottom_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
-
+        ## Sort this so the default multiselect is the top 3 directors by rating
         @st.cache_data
-        def transform_frame(df: pd.DataFrame, n: int, y: str):
-            df = df[df[y]>0].sort_values(y, ascending=False)
+        def sort_frame(df: pd.DataFrame):
+            return df.sort_values('combo_score', ascending=False)
+        df = sort_frame(df)
 
 
         c1, c2, c3 = st.columns([.25, .5, .25])
         with c1:
-            x = st.radio('Select Timeframe', ['year', 'decade'], index=1, key='x_dir_rating_over_time_radio', horizontal=True)
+            n = int(st.slider('Select Number of Films', 1, 20, 1, 1, help='Rating by director after N films', key='per_film_rating_slider'))
         with c2:
             chosen_dir = st.multiselect(
                             'Select Director(s)',
                             df['director'].unique().tolist(),
-                            df['director'].unique().tolist()[:2],
-                            key='dir_rating_over_time_multiselect')
+                            df['director'].unique().tolist()[:3],
+                            key='dir_per_film_rating_multiselect')
         with c3:
-            y = st.radio('Select Rating System', ['metacritic_score', 'imdb_score', 'combo_score'], index=1, key='y_dir_rating_over_time_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
+            y = st.radio('Select Rating System', ['metacritic_score', 'imdb_score', 'combo_score'], index=1, key='y_dir_per_film_rating_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
 
 
         @st.cache_data
-        def transform_frame(df: pd.DataFrame, x: str, y: str):
-            frame = df[(df[y] > 0) & (df['year'] > 0)].groupby([x, 'director'])[y].agg(['mean', 'count'])\
-                                                        .rename(columns={'mean': y, 'count': 'films'})\
-                                                        .round(1)\
-                                                        .reset_index()
-            if x == 'year':
-                frame = frame.merge(df[['year', 'director', 'title']], left_on=['year', 'director'], right_on=['year', 'director'], how='left')
-            return frame
+        def transform_frame(df: pd.DataFrame, y: str):
+            return df[(df[y] > 0) & (df['year'] > 0)].sort_values('year')\
+                                                    .assign(nth_film=lambda f: f.groupby('director')['year']\
+                                                            .transform(lambda f: f.rank(method='first')))\
+                                                    .sort_values('nth_film')
         
-        df_plot = transform_frame(df, x, y)
-
+        df_plot = transform_frame(df, y)
         dir_mask = (df_plot['director'].isin(chosen_dir))
-        size = 11 if x == 'year' else 9
 
-        def hover(x, y, data_clr: pd.DataFrame):
-            if x == 'year':
-                hov = '<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Rating</b>: ' + data_clr[y].map('{:.1f}'.format).astype(str) + '<extra></extra>'
+        def hover(y, data_clr: pd.DataFrame):
+            if len(chosen_dir) <= 1:
+                hov = '<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Rating</b>: ' + data_clr[y].map('{:.1f}'.format).astype(str) + '<br><b>Film No.</b>: ' + data_clr['nth_film'].astype(int).astype(str) + '<extra></extra>'
             else:
-                hov = '<b>Dir</b>: ' + data_clr['director'] + ' (' + data_clr['decade'].astype(str) +'s) ' + '<br><b>Films</b>: ' + data_clr['films'].astype(str) + '<br><b>Avg. Rating</b>: ' + data_clr[y].map('{:.1f}'.format).astype(str) + '<extra></extra>'
+                hov = '<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Dir</b>: ' + data_clr['director']+ '<br><b>Rating</b>: ' + data_clr[y].map('{:.1f}'.format).astype(str) + '<br><b>Film No.</b>: ' + data_clr['nth_film'].astype(int).astype(str) + '<extra></extra>'
             return hov
 
-        
+
         colors = int(df_plot.shape[0] / 8) * px.colors.qualitative.Pastel
+        # st.write(colors[:17])
 
         def plot_unchosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
             for director in df_plot['director'].unique():
                 data_grey = df_plot[(df_plot['director'] == director) & ~dir_mask]
                 
                 fig.add_trace(go.Scatter(
-                    x=data_grey[x],
+                    x=data_grey.loc[data_grey['nth_film'] <= n, 'nth_film'],
                     y=data_grey[y],
                     mode='markers',
-                    name=f"{director}s" if x == 'decade' else f"{director}",
+                    name='none',
                     marker=dict(color='grey', size=9, opacity=.4, line=dict(color='black', width=1)),
                     hoverinfo='skip',
                     showlegend=False,
                 ))
 
         def plot_chosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
-            for idx, director in enumerate(df_plot['director'].unique()):
+            for idx, director in enumerate(df_plot.loc[dir_mask, 'director'].unique()):
                 data_clr = df_plot[(df_plot['director'] == director) & dir_mask]
 
                 fig.add_trace(go.Scatter(
-                    x=data_clr[x],
+                    x=data_clr.loc[data_clr['nth_film'] <= n, 'nth_film'],
                     y=data_clr[y],
                     mode='markers+lines',
-                    name=f"{director}s" if x == 'decade' else f"{director}",
+                    name=director,
                     marker=dict(color=colors[idx], size=12 if len(chosen_dir) < 8 else 11, opacity=1 if len(chosen_dir) < 8 else .8, line=dict(color='black', width=1)),
-                    hovertemplate=hover(x, y, data_clr),
+                    hovertemplate=hover(y, data_clr),
                     showlegend=True,
                 ))
+                idx += 1
 
         fig = go.Figure()
         plot_unchosen_dir(fig, df_plot) ## add grey first so that the colored points are on top
@@ -353,6 +341,140 @@ class PageBoxOffice():
                         )
                             
         st.plotly_chart(fig)
+
+
+
+
+
+    def plot_dir_rating_after_n_films(self, df: pd.DataFrame=pd.DataFrame()):
+        """Average scores for the top and bottom grossing films."""
+        
+        self.element_header("How Are Directors Rated After N Films?")
+        st.markdown("<div align=center>This chart shows the career rating of a director after N films, giving insight into how a director's rating changes over time</div><BR><BR>", unsafe_allow_html=True)
+        
+        ## Sort this so the default multiselect is the top 3 directors by rating
+        @st.cache_data
+        def sort_frame(df: pd.DataFrame):
+            return df.sort_values('combo_score', ascending=False)
+        df = sort_frame(df)
+
+
+        c1, c2, c3 = st.columns([.25, .5, .25])
+        with c1:
+            n = int(st.slider('Select Number of Films', 1, df.groupby('director').size().max(), 3, 1, help='Rating by director after N films', key='n_films_rating_slider'))
+        with c2:
+            chosen_dir = st.multiselect(
+                            'Select Director(s)',
+                            df['director'].unique().tolist(),
+                            df['director'].unique().tolist()[:3],
+                            key='dir_n_films_rating_multiselect')
+        with c3:
+            y = st.radio('Select Rating System', ['metacritic_score', 'imdb_score', 'combo_score'], index=1, key='y_dir_n_films_rating_radio', format_func=lambda label: label.replace('_score', ''), horizontal=True)
+
+
+        @st.cache_data
+        def transform_frame(df: pd.DataFrame, y: str):
+            return df[(df[y] > 0) & (df['year'] > 0)].sort_values('year')\
+                                                    .assign(nth_film=lambda f: f.groupby('director')['year']\
+                                                            .transform(lambda s: s.rank(method='first')))\
+                                                    .sort_values(['nth_film', 'director'])\
+                                                    .assign(career_rating=lambda f: f.groupby('director')[y].transform(lambda s: s.expanding().mean().round(1)))
+        
+        df_plot = transform_frame(df, y)
+        dir_mask = (df_plot['director'].isin(chosen_dir))
+
+        def hover(y, data_clr: pd.DataFrame):
+            if len(chosen_dir) <= 1:
+                hov = '<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Career Rating</b>: ' + data_clr['career_rating'].map('{:.1f}'.format).astype(str) + '<br><b>Film No.</b>: ' + data_clr['nth_film'].astype(int).astype(str) + '<extra></extra>'
+            else:
+                hov = '<b>Title</b>: ' + data_clr['title'] + ' (' + data_clr['year'].astype(str) +') ' + '<br><b>Dir</b>: ' + data_clr['director']+ '<br><b>Career Rating</b>: ' + data_clr['career_rating'].map('{:.1f}'.format).astype(str) + '<br><b>Film No.</b>: ' + data_clr['nth_film'].astype(int).astype(str) + '<extra></extra>'
+            return hov
+
+
+        colors = int(df_plot.shape[0] / 8) * px.colors.qualitative.Pastel
+
+        # st.write(df_plot.head(30))
+
+        def plot_unchosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
+            for director in df_plot['director'].unique():
+                data_grey = df_plot[(df_plot['director'] == director) & ~dir_mask]
+                
+                fig.add_trace(go.Scatter(
+                    x=data_grey.loc[data_grey['nth_film'] <= n, 'nth_film'],
+                    y=data_grey['career_rating'],
+                    mode='markers',
+                    name='none',
+                    marker=dict(color='grey', size=9, opacity=.4, line=dict(color='black', width=1)),
+                    hoverinfo='skip',
+                    showlegend=False,
+                ))
+
+        def plot_chosen_dir(fig: go.Figure, df_plot: pd.DataFrame):
+            for idx, director in enumerate(df_plot.loc[dir_mask, 'director'].unique()):
+                data_clr = df_plot[(df_plot['director'] == director) & dir_mask]
+
+                fig.add_trace(go.Scatter(
+                    x=data_clr.loc[data_clr['nth_film'] <= n, 'nth_film'],
+                    y=data_clr['career_rating'],
+                    mode='markers+lines',
+                    name=director,
+                    marker=dict(color=colors[idx], size=12 if len(chosen_dir) < 8 else 11, opacity=1 if len(chosen_dir) < 8 else .8, line=dict(color='black', width=1)),
+                    hovertemplate=hover(y, data_clr),
+                    showlegend=True,
+                ))
+                idx += 1
+
+        fig = go.Figure()
+        plot_unchosen_dir(fig, df_plot) ## add grey first so that the colored points are on top
+        plot_chosen_dir(fig, df_plot)
+
+        fig.update_layout(width=1000,
+                          height=500,
+                          yaxis_title=y,
+                        # title={'font_color': blue_bath1[1], 'font_size': 23, # 'font_family': "Times New Roman", 'text': "Gross over Time", 'y':0.9, 'x':0.5, 'xanchor': 'center', 'yanchor': 'top'}
+                        )
+                            
+        st.plotly_chart(fig)
+        self.table_dir_rating_after_n_films(df_plot, y, n)
+
+
+
+    def table_dir_rating_after_n_films(self, df: pd.DataFrame=pd.DataFrame(), y: str='imdb_score', n: int=5):
+        """ 
+        """
+
+        @st.cache_data
+        def transform_frame(df: pd.DataFrame, y: str, n: int):
+            ## .query("nth_film == @n") or .query("nth_film <= @n").... 
+            return df[df[y] > 0].sort_values('nth_film', ascending=True)\
+                                .query("nth_film == @n")\
+                                .groupby('director')[['nth_film', 'career_rating']].last()\
+                                .sort_values(['career_rating', 'director'], ascending=[False, True])\
+                                .assign(rank=lambda f: f['career_rating'].rank(ascending=False, method='dense').astype(int))\
+                                .rename(columns={'career_rating': 'Career Rating'})
+
+        frame = transform_frame(df, y, n)[['rank', 'Career Rating']]
+
+        # st.write(df.tail(20))
+        # st.write(frame.head(10))
+        rating = y.replace('_score', '').title() if y != 'imdb_score' else 'IMDb'
+        st.markdown(f"""<div align=center><font size=5>Career <font color={vermeer_pearl[1]}>{rating}</font> Rating After <font color={vermeer_pearl[1]}>{n}</font> Films</font></div><BR>""", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([.34, .33, .33])
+        with col1:
+            st.dataframe(frame.iloc[:5].style.format({'Career Rating': "{:.1f}", 'nth_film': '{:.0f}'}), use_container_width=False)
+        with col2:
+            if frame.shape[0] > 5:
+                st.dataframe(frame.iloc[5:10].style.format({'Career Rating': "{:.1f}", 'nth_film': '{:.0f}'}), use_container_width=False)
+        with col3:
+            if frame.shape[0] > 10:
+                st.dataframe(frame.iloc[10:15].style.format({'Career Rating': "{:.1f}", 'nth_film': '{:.0f}'}), use_container_width=False)
+
+        st.markdown("")
+
+
+
+
+
 
 
 
